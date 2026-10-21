@@ -146,9 +146,11 @@ export function createScreen(ctx, { title, backTo = "#/home", className = "", ac
  *   "2x2"   2 × 2 (home)
  *   "pair"  2 tiles: side by side in landscape, stacked in portrait
  *   "many"  up to 6 tiles: 3 × 2 in landscape, 2 × 3 in portrait
+ *   "trio"  3 tiles: 3 × 1 in landscape, 1 × 3 in portrait
+ * `{ playful: true }` gives the soft rounded tiles (label top-left, icon beneath).
  */
-export function createTileGrid(layout = "2x2") {
-  return el("div", { class: `tile-grid tile-grid--${layout}` });
+export function createTileGrid(layout = "2x2", { playful = false } = {}) {
+  return el("div", { class: `tile-grid tile-grid--${layout}${playful ? " tile-grid--playful" : ""}` });
 }
 
 /**

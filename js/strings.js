@@ -33,16 +33,24 @@ export const STRINGS = {
 
     "foodDrink.title": "Food & drink",
     "foodDrink.food": "Food",
+    "foodDrink.drink": "Drink",
     "drink.water": "Water",
+    "drink.milk": "Milk",
+    "drink.tea": "Tea",
+
+    "toilet.pee": "Pee",
+    "toilet.poo": "Poo",
+    "toilet.help": "Need help",
 
     "food.alreadyRequested": "Food already requested",
     "food.requestedAt": "at {time}",
     // Only for OLDER food requests on the nurse dashboard (no longer a choice)
     "food.sandwich": "Sandwich",
+    "food.snacks": "Snacks",
     "food.yoghurt": "Yoghurt",
     "food.fruit": "Fruit",
     "food.soup": "Soup",
-    "food.something": "Something to eat",
+    "food.something": "Something else",
 
     "pain.title": "Where does it hurt?",
     "pain.viewFront": "Front",
@@ -270,16 +278,24 @@ export const STRINGS = {
 
     "foodDrink.title": "Eten & drinken",
     "foodDrink.food": "Eten",
+    "foodDrink.drink": "Drinken",
     "drink.water": "Water",
+    "drink.milk": "Melk",
+    "drink.tea": "Thee",
+
+    "toilet.pee": "Plassen",
+    "toilet.poo": "Poepen",
+    "toilet.help": "Hulp nodig",
 
     "food.alreadyRequested": "Eten al gevraagd",
     "food.requestedAt": "om {time}",
     // Only for OLDER food requests on the nurse dashboard (no longer a choice)
     "food.sandwich": "Boterham",
+    "food.snacks": "Tussendoortje",
     "food.yoghurt": "Yoghurt",
     "food.fruit": "Fruit",
     "food.soup": "Soep",
-    "food.something": "Iets om te eten",
+    "food.something": "Iets anders",
 
     "pain.title": "Waar doet het pijn?",
     "pain.viewFront": "Voorkant",
@@ -506,16 +522,24 @@ export const STRINGS = {
 
     "foodDrink.title": "Mat og drikke",
     "foodDrink.food": "Mat",
+    "foodDrink.drink": "Drikke",
     "drink.water": "Vann",
+    "drink.milk": "Melk",
+    "drink.tea": "Te",
+
+    "toilet.pee": "Tisse",
+    "toilet.poo": "Bæsje",
+    "toilet.help": "Trenger hjelp",
 
     "food.alreadyRequested": "Mat er allerede bestilt",
     "food.requestedAt": "kl. {time}",
     // Only for OLDER food requests on the nurse dashboard (no longer a choice)
     "food.sandwich": "Smørbrød",
+    "food.snacks": "Snacks",
     "food.yoghurt": "Yoghurt",
     "food.fruit": "Frukt",
     "food.soup": "Suppe",
-    "food.something": "Noe å spise",
+    "food.something": "Noe annet",
 
     "pain.title": "Hvor gjør det vondt?",
     "pain.viewFront": "Forside",

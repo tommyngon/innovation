@@ -2,12 +2,16 @@
   sent.js — confirmation screen shown after every request (#/sent).
 
   Waits for the result of the last send (normally a fraction of a second)
-  and shows "Sending…" meanwhile. Then:
-    online   ✅ + icon + "The nurse has been notified"
-    local    ⚠ + icon + "Sent in offline demo mode: only visible on this
+  and shows "Sending…" meanwhile. The screen is a centred column:
+    mark (large, on top) + request symbol (smaller, below) + message.
+  Marks are SVG icons from js/icons.js (no emoji), coloured in css/base.css:
+    sending  hourglass (ink)
+    online   check (green) + "The nurse has been notified"
+    local    warning (amber) + "Sent in offline demo mode: only visible on this
              device", in a clearly different warning style. A patient must
              never believe a request reached the nurse when it did not.
-    duplicate (same request < 10 s ago): "Already sent, the nurse is on the way"
+    duplicate (same request < 10 s ago): check + "Already sent, the nurse is on the way"
+    reloaded (no result): check only
   Goes back to home automatically after a visible countdown.
   Voice assistance says the outcome; the offline case is a clearly
   different warning ("Warning. Your request did NOT reach the nurse…").
@@ -15,7 +19,7 @@
 
 import { el } from "../../js/ui.js";
 import { speak } from "../../js/voice.js";
-import { typeIconNode } from "../../js/icons.js";
+import { iconNode, typeIconNode } from "../../js/icons.js";
 
 const AUTO_RETURN_SECONDS = 6;
 const WARNING_RETURN_SECONDS = 12;   // more time to read the warning
@@ -27,7 +31,9 @@ export function render(container, ctx) {
   const token = ++renderToken;
   const result = ctx.getLastResult();          // null if the page was reloaded on #/sent
 
-  const mark = el("span", {}, [result && !result.duplicate ? "⏳" : "✅"]);
+  const mark = el("span", { class: "sent-mark" }, [
+    iconNode(result && !result.duplicate ? "hourglass" : "check"),
+  ]);
   const message = el("h1", { class: "sent-message", role: "status" }, [
     !result ? ctx.t("sent.notified")
       : result.duplicate ? ctx.t("sent.alreadySent")
@@ -36,11 +42,9 @@ export function render(container, ctx) {
   const hint = el("p", { class: "sent-hint", hidden: true });
   const countdown = el("p", { class: "sent-countdown", "aria-live": "polite" });
   const section = el("section", { class: "sent" }, [
-    el("div", { class: "sent-icons icon", "aria-hidden": "true" }, [
+    el("div", { class: "sent-icons", "aria-hidden": "true" }, [
       mark,
-      result && result.type !== "pain"
-        ? el("span", {}, [typeIconNode(result.type)])
-        : null,
+      result ? el("span", { class: "sent-request" }, [typeIconNode(result.type)]) : null,
     ]),
     message,
     hint,
@@ -65,13 +69,13 @@ export function render(container, ctx) {
     if (token !== renderToken) return;          // user already left this screen
     section.classList.remove("sent--sending");
     if (outcome.mode === "online") {
-      mark.textContent = "✅";
+      mark.replaceChildren(iconNode("check"));
       message.textContent = ctx.t("sent.notified");
       speak(ctx.t("sent.notified"), { queue: true });   // after "Water", "Toilet", …
       startCountdown(ctx, countdown, AUTO_RETURN_SECONDS);
     } else {
       section.classList.add("sent--local");
-      mark.textContent = "⚠️";
+      mark.replaceChildren(iconNode("warning"));
       message.textContent = ctx.t("sent.localMode");
       hint.textContent = ctx.t("sent.localModeHint");
       hint.hidden = false;

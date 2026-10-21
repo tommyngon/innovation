@@ -655,3 +655,8 @@ body.nurse-page .nurse-speech-open:hover { background: #fff; }
   body.nurse-page *::after { transition: none !important; animation: none !important; }
   body.nurse-page .nurse-card.is-arriving { box-shadow: 0 0 0 4px rgba(63, 108, 224, 0.55) !important; }
 }
+
+/* Symbol of the patient's choice (pee / tea / snacks …) next to the detail text */
+body.nurse-page .nurse-detail.nurse-choice { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; }
+body.nurse-page .nurse-choice-icon { display: inline-flex; color: var(--ink); }
+body.nurse-page .nurse-choice-icon svg { width: 26px; height: 26px; }

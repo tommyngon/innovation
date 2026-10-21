@@ -286,7 +286,9 @@ button:disabled {
 .tile-grid--2x2  { --cols: 2; --rows: 2; }
 .tile-grid--pair { --cols: 2; --rows: 1; }
 .tile-grid--many { --cols: 3; --rows: 2; }
+.tile-grid--trio { --cols: 3; --rows: 1; }
 @media (orientation: portrait) {
+  .tile-grid--trio { --cols: 1; --rows: 3; }
   .tile-grid--pair { --cols: 1; --rows: 2; }
   .tile-grid--many { --cols: 2; --rows: 3; }
 }
@@ -382,9 +384,9 @@ button:disabled {
 .tile[data-accent="pain"]   { --tile-accent: var(--accent-pain); }
 .tile[data-accent="speech"] { --tile-accent: var(--accent-speech); }
 
-/* ---- Home screen only: soft rounded playful tiles (other screens keep the square tiles above) ---- */
+/* ---- Playful tiles: grids made with createTileGrid(layout, { playful: true }) (home, toilet, food & drink); other grids keep the square tiles above ---- */
 /* One big soft rounded tile: label top-left, large icon beneath it */
-.home .tile {
+.tile-grid--playful .tile {
   width: var(--tile);
   height: var(--tile);
   padding: clamp(14px, calc(var(--tile) * 0.1), 22px);
@@ -402,40 +404,62 @@ button:disabled {
   box-shadow: 0 6px 16px rgba(27, 27, 27, 0.14) !important;
   transition: transform 0.08s ease;
 }
-.home .tile-icon {
+.tile-grid--playful .tile-icon {
   flex: 0 0 auto;
   display: block;
   font-size: calc(var(--tile) * 0.3);                   /* emoji fallback */
   --tile-icon-size: min(clamp(96px, 22vmin, 220px), calc(var(--tile) * 0.52));
 }
-.home .tile-icon > svg {
+.tile-grid--playful .tile-icon > svg {
   display: block;
   width: var(--tile-icon-size) !important;
   height: var(--tile-icon-size) !important;
   fill: currentColor;
   color: var(--color-text);
 }
-.home .tile-label {
+.tile-grid--playful .tile-label {
   font-weight: bold;
   font-size: clamp(18px, 3.2vw, 34px);
   line-height: 1.15;
   text-align: left;
   overflow-wrap: anywhere;
 }
-.home .tile:active { transform: scale(0.98); }
-.home .tile:focus-visible { outline: 4px solid var(--color-focus); outline-offset: 3px; }
+.tile-grid--playful .tile:active { transform: scale(0.98); }
+.tile-grid--playful .tile:focus-visible { outline: 4px solid var(--color-focus); outline-offset: 3px; }
 
-/* Home tile colours (flat, playful; used only by the tiles) */
+/* Playful tile colours (flat; used only by playful tiles) */
 :root {
   --home-tile-toilet: #a9c9f5;   /* sky blue */
   --home-tile-food: #f7e96b;     /* sunny yellow */
   --home-tile-pain: #ff9e8c;     /* coral */
   --home-tile-speech: #8fd3b0;   /* mint */
+  --play-lilac: #cfc8ff;
+  --play-pink: #f4c5dd;
 }
-.home .tile[data-accent="toilet"] { --tile-accent: var(--home-tile-toilet); }
-.home .tile[data-accent="food"]   { --tile-accent: var(--home-tile-food); }
-.home .tile[data-accent="pain"]   { --tile-accent: var(--home-tile-pain); }
-.home .tile[data-accent="speech"] { --tile-accent: var(--home-tile-speech); }
+.tile-grid--playful .tile[data-accent="toilet"] { --tile-accent: var(--home-tile-toilet); }
+.tile-grid--playful .tile[data-accent="food"]   { --tile-accent: var(--home-tile-food); }
+.tile-grid--playful .tile[data-accent="pain"]   { --tile-accent: var(--home-tile-pain); }
+.tile-grid--playful .tile[data-accent="speech"] { --tile-accent: var(--home-tile-speech); }
+.tile-grid--playful .tile[data-accent="play-blue"]   { --tile-accent: var(--home-tile-toilet); }
+.tile-grid--playful .tile[data-accent="play-yellow"] { --tile-accent: var(--home-tile-food); }
+.tile-grid--playful .tile[data-accent="play-coral"]  { --tile-accent: var(--home-tile-pain); }
+.tile-grid--playful .tile[data-accent="play-mint"]   { --tile-accent: var(--home-tile-speech); }
+.tile-grid--playful .tile[data-accent="play-lilac"]  { --tile-accent: var(--play-lilac); }
+.tile-grid--playful .tile[data-accent="play-pink"]   { --tile-accent: var(--play-pink); }
+
+/* Sub-screens (not home) in portrait: playful tiles fill the column width
+   (rectangles) so 3 rows or a 2 x 2 grid fit without scrolling at 390 x 844. */
+@media (orientation: portrait) {
+  .screen .tile-grid--playful {
+    --tile-w: min(calc((100vw - 2 * var(--pad) - (var(--cols) - 1) * var(--gap)) / var(--cols)), 640px);
+    --tile-h: calc((var(--vh) - var(--reserved-h) - (var(--rows) - 1) * var(--gap)) / var(--rows));
+    --tile: min(var(--tile-w), var(--tile-h));
+    grid-template-columns: repeat(var(--cols), var(--tile-w));
+    grid-auto-rows: var(--tile-h);
+  }
+  .screen .tile-grid--playful .tile { width: var(--tile-w); height: var(--tile-h); }
+}
+
 .tile[data-accent="water"]  { --tile-accent: var(--accent-water); }
 
 /* Big primary action button (e.g. "Back to start", "Send") */
@@ -477,10 +501,11 @@ button:disabled {
 }
 .already-notice-mark {
   flex: 0 0 auto;
-  font-size: 72px;
-  line-height: 1;
-  font-weight: bold;
+  width: 72px;
+  height: 72px;
+  color: var(--accent-send);
 }
+.already-notice-mark > svg { display: block; width: 100%; height: 100%; }
 .already-notice-text {
   display: flex;
   flex-direction: column;
@@ -500,7 +525,19 @@ button:disabled {
   padding: var(--pad);
   text-align: center;
 }
-.sent-icons { display: flex; gap: 32px; font-size: min(22vh, 22vw); }
+/* Mark (check / hourglass / warning) on top, request symbol below */
+.sent-icons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.sent-mark, .sent-request { line-height: 1; }
+.sent-mark { font-size: clamp(96px, 22vmin, 160px); color: #1d7048; }
+.sent-request { font-size: clamp(64px, 14vmin, 104px); color: #1b1b1b; }
+.sent-mark svg, .sent-request svg { display: block; width: 1em; height: 1em; flex-shrink: 0; }
+.sent--sending .sent-mark { color: #1b1b1b; }
+.sent--local .sent-mark { color: #9a4a0e; }
 .sent-message { font-size: clamp(24px, 4vw, 40px); font-weight: bold; }
 .sent-countdown { color: var(--color-muted); font-size: 20px; }
 .sent-hint { font-size: clamp(18px, 2.4vw, 24px); max-width: 40em; }

@@ -34,7 +34,7 @@ const STATUS_KEYS = {
 let stopListening = null;
 
 export function render(container, ctx) {
-  const grid = createTileGrid("2x2");
+  const grid = createTileGrid("2x2", { playful: true });
   for (const tile of TILES) {
     grid.append(createTile({
       icon: iconNode(tile.icon, { className: "tile-svg" }),

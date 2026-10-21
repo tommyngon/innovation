@@ -27,7 +27,7 @@ import { CHANNEL_NAME, readStoredNotifications, updateStoredNotification } from 
 import { unlockAudio, playDing } from "./sound.js";
 import { el } from "./ui.js";
 import { iconNode } from "../modules/pain/symptom-icons.js";
-import { typeIconNode } from "./icons.js";
+import { typeIconNode, iconNode as glyph } from "./icons.js";
 
 const POLL_MS = 10_000;
 const TICK_MS = 30_000;
@@ -448,6 +448,20 @@ function matchesSearch(row) {
 }
 
 /** Plain text of the request details, for searching. */
+/** Symbol of what the patient picked (same icons as the patient screen). */
+const CHOICE_ICONS = {
+  toilet: { pee: "pee", poo: "poo", help: "help" },
+  drink: { water: "water", milk: "milk", tea: "tea" },
+  food: { snacks: "snack", fruit: "fruit", yoghurt: "yoghurt", something: "more" },
+};
+
+function choiceLine(text, iconName) {
+  const parts = [];
+  if (iconName) parts.push(el("span", { class: "nurse-choice-icon", "aria-hidden": "true" }, [glyph(iconName)]));
+  parts.push(text);
+  return el("div", { class: "nurse-detail nurse-detail-main nurse-choice" }, parts);
+}
+
 function detailsText(row) {
   const d = row.details && typeof row.details === "object" ? row.details : {};
   switch (row.type) {
@@ -493,7 +507,7 @@ function openCard(row, now) {
       ]),
       el("span", { class: "nurse-card-time" }, [`${clock(row.created_at)} · ${relative(age)}`]),
     ]),
-    detailsElement(row),   // null for toilet: nothing to add
+    detailsElement(row),   // null for an old toilet request without a choice
     actions(row, ["acknowledged", "resolved"]),
   ].filter(Boolean));
   return card;
@@ -556,16 +570,18 @@ function bedsideUrl() {
   return (fromUrl || "http://localhost:8020").replace(/\/+$/, "");
 }
 
-/** Readable details of a request (a node, or null for "toilet"). */
+/** Readable details of a request (a node, or null for an old "toilet" request). */
 function detailsElement(row) {
   const d = row.details && typeof row.details === "object" ? row.details : {};
   const line = (text, className = "nurse-detail nurse-detail-main") => el("div", { class: className }, [text]);
   switch (row.type) {
     case "toilet":
-      return null;
+      return d.need
+        ? choiceLine(t("nurse.detailLine", { type: typeLabel("toilet"), value: label(`toilet.${d.need}`, d.need) }), CHOICE_ICONS.toilet[d.need])
+        : null;
     case "drink":
     case "food":
-      return line(foodDrinkText(row.type, d));
+      return choiceLine(foodDrinkText(row.type, d), CHOICE_ICONS[row.type]?.[d.item]);
     case "speech":
       return el("div", { class: "nurse-detail" }, [
         line(t("nurse.detailLine", { type: typeLabel("speech"), value: d.translatedText ?? d.originalText ?? "" })),
