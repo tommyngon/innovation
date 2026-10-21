@@ -13,5 +13,5 @@
   to localStorage + BroadcastChannel (same browser only), as before.
 */
 
-export const SUPABASE_URL = "https://yvstfixolrqskmpmjevl.supabase.co";
-export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_NIriOM4AFxuxjuRKbhZfEQ_QzA8xivT";
+export const SUPABASE_URL = "";
+export const SUPABASE_PUBLISHABLE_KEY = "";
