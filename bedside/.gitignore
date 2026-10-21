@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 tests/results.json
+.DS_Store
