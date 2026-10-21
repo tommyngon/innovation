@@ -7,7 +7,7 @@
   1. Press START SHIFT (browsers only allow sound + notifications after a click).
   2. Patient requests from every device appear live, oldest first.
   3. ACKNOWLEDGE  -> the patient sees "Your nurse has seen your request ✓"
-     RESOLVED     -> the request disappears (it stays in "Resolved (last hour)").
+     RESOLVED     -> the request disappears (it stays in "Resolved").
 
   This page is markup only; the logic lives in js/nurse.js, styles in css/nurse.css.
   With an empty js/config.js it runs in LOCAL DEMO MODE (same browser only).
@@ -16,27 +16,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nurse station</title>
+  <title>Ward overview</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/nurse.css">
   <script type="module" src="./js/nurse.js"></script>
 </head>
-<body>
-  <header class="app-header nurse-header">
-    <span id="nurse-title"></span>
-    <div class="nurse-indicators" id="nurse-indicators" hidden>
-      <span class="nurse-connection" id="nurse-connection" role="status"></span>
-      <span class="nurse-indicator" id="nurse-sound"></span>
-      <span class="nurse-indicator" id="nurse-notify"></span>
+<body class="nurse-page">
+  <div class="nurse-backdrop" aria-hidden="true"></div>
+
+  <header class="nurse-header">
+    <span class="nurse-header-title" id="nurse-title" hidden></span>
+    <div class="nurse-indicators">
+      <span class="nurse-connection" id="nurse-connection" role="status" hidden></span>
+      <span class="nurse-indicator" id="nurse-sound" hidden></span>
+      <span class="nurse-indicator" id="nurse-notify" hidden></span>
+      <div class="nurse-lang" role="group" aria-label="Language">
+        <button type="button" class="nurse-lang-button" data-lang="en" aria-label="English">EN</button>
+        <button type="button" class="nurse-lang-button" data-lang="no" aria-label="Norsk">NO</button>
+      </div>
     </div>
   </header>
 
   <main class="nurse">
     <section class="nurse-start" id="nurse-start">
-      <h1 class="nurse-start-title" id="nurse-start-title"></h1>
-      <p class="nurse-start-hint" id="nurse-start-hint"></p>
-      <button type="button" class="big-button big-button--send nurse-start-button" id="nurse-start-button"></button>
+      <div class="nurse-start-card">
+        <p class="nurse-start-eyebrow" id="nurse-start-eyebrow"></p>
+        <h1 class="nurse-start-title" id="nurse-start-title"></h1>
+        <p class="nurse-start-hint" id="nurse-start-hint"></p>
+        <button type="button" class="nurse-start-button" id="nurse-start-button"></button>
+      </div>
     </section>
 
     <div class="nurse-dashboard" id="nurse-dashboard" hidden>

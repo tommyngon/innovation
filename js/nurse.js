@@ -36,9 +36,14 @@ const HIGH_PAIN = 7;
 const RANK = { open: 0, acknowledged: 1, resolved: 2 };
 
 const params = new URLSearchParams(location.search);
-const lang = setLanguage(params.get("lang") || "en");
-const locale = lang === "no" ? "nb" : lang;
+const LANG_KEY = "pcs_nurse_lang";
+let lang = setLanguage(params.get("lang") || readSavedLanguage() || "en");
+let locale = lang === "no" ? "nb" : lang;
 document.documentElement.lang = locale;
+
+function readSavedLanguage() {
+  try { return localStorage.getItem(LANG_KEY); } catch { return null; }
+}
 
 const localMode = !backend.isConfigured();
 
@@ -71,21 +76,57 @@ const els = {
 
 // ---------------------------------------------------------------- start
 
-document.title = t("nurse.stationTitle");
-els.title.textContent = t("nurse.stationTitle");
-$("nurse-start-title").textContent = t("nurse.stationTitle");
-$("nurse-start-hint").textContent = t("nurse.startHint");
-els.startButton.textContent = t("nurse.startShift");
+let started = false;
+let soundIsOn = false;
+
+/** Texts that are set once (everything else is re-rendered by render()). */
+function applyStaticTexts() {
+  document.title = t("nurse.pageTitle");
+  els.title.textContent = t("nurse.pageTitle");
+  $("nurse-start-eyebrow").textContent = t("nurse.pageTitle");
+  $("nurse-start-title").textContent = t("nurse.startTitle");
+  $("nurse-start-hint").textContent = t("nurse.startHint");
+  els.startButton.textContent = t("nurse.startShift");
+  if (started) {
+    els.sound.textContent = t(soundIsOn ? "nurse.soundOn" : "nurse.soundOff");
+    showNotificationState();
+  }
+  document.querySelectorAll(".nurse-lang-button").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+  });
+}
+
+/** Switch the page language right away (no reload, the shift keeps running). */
+function switchLanguage(code) {
+  lang = setLanguage(code);
+  locale = lang === "no" ? "nb" : lang;
+  document.documentElement.lang = locale;
+  try { localStorage.setItem(LANG_KEY, lang); } catch { /* private mode: fine */ }
+  const url = new URL(location.href);
+  url.searchParams.set("lang", lang);
+  history.replaceState(null, "", url);
+  applyStaticTexts();
+  if (started) render();
+}
+
+document.querySelectorAll(".nurse-lang-button").forEach((b) => {
+  b.addEventListener("click", () => switchLanguage(b.dataset.lang));
+});
+applyStaticTexts();
 els.startButton.addEventListener("click", startShift, { once: true });
 
 async function startShift() {
-  const soundOn = unlockAudio();
+  soundIsOn = unlockAudio();
   playDing({ volume: 0.15 });   // confirms sound works
+  started = true;
 
   els.start.hidden = true;
   els.dashboard.hidden = false;
-  els.indicators.hidden = false;
-  els.sound.textContent = t(soundOn ? "nurse.soundOn" : "nurse.soundOff");
+  els.title.hidden = false;
+  els.sound.hidden = false;
+  els.notify.hidden = false;
+  document.body.classList.add("is-started");
+  els.sound.textContent = t(soundIsOn ? "nurse.soundOn" : "nurse.soundOff");
   showNotificationState();
   render();
 
@@ -275,7 +316,8 @@ function setConnection(state) {
     local: "nurse.localDemo",
   };
   els.connection.dataset.state = state;
-  els.connection.textContent = state === "local" ? t(keys[state]) : `● ${t(keys[state])}`;
+  els.connection.textContent = `● ${t(keys[state])}`;
+  els.connection.hidden = !(state === "reconnecting" || state === "offline");
 }
 
 // ---------------------------------------------------------------- render
@@ -299,7 +341,7 @@ function render() {
   els.resolvedList.replaceChildren(...(resolved.length ? resolved.map(resolvedItem) : [empty("nurse.noResolved")]));
   arriving.clear();
 
-  const title = t("nurse.stationTitle");
+  const title = t("nurse.pageTitle");
   document.title = open.length ? `(${open.length}) ${title}` : title;
 }
 
