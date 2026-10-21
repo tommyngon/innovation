@@ -45,7 +45,7 @@ export function render(container, ctx) {
   const { root, body } = createScreen(ctx, { title: ctx.t("speech.title") });
   body.classList.add("speech-body");
 
-  const src = `${base}/?embed=1&room=${encodeURIComponent(ctx.room)}&patient=${encodeURIComponent(ctx.patient)}`;
+  const src = `${base}/?embed=1&room=${encodeURIComponent(ctx.room)}&patient=${encodeURIComponent(ctx.patient)}&lang=${encodeURIComponent(ctx.lang)}`;
   frame = el("iframe", { class: "speech-frame", src, title: ctx.t("speech.title"), allow: "microphone" });
   body.append(frame);
 

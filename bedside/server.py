@@ -24,29 +24,31 @@ log = logging.getLogger("bedside")
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
-STATE = {"mode": os.getenv("BEDSIDE_MODE", "live"), "asr": False, "mt": False}
+STATE = {"mode": os.getenv("BEDSIDE_MODE", "live"), "asr": False, "asr_fast": False, "mt": False}
 
 
 def _preload():
-    try:
-        mt.load()
-        STATE["mt"] = True
-    except Exception as e:
-        log.error("MT load failed: %s", type(e).__name__)
-        STATE["mode"] = "demo"
+    # NLLB is NOT loaded here: it loads lazily on first local-fallback translation (saves ~2.4 GB RAM)
     threading.Thread(target=clinical.hpc_warmup, daemon=True).start()  # open TLS connection early
-    try:
-        asr.get_pipe("no")
-        STATE["asr"] = True
-        asr.warm_up("no")
+    ok = 0
+    for lang in ("no", "en"):  # accurate (final) pipelines first: they gate ready.asr
         try:
-            asr.get_pipe("en")
-            asr.warm_up("en")
+            asr.warm_up(lang, "final")
+            ok += 1
         except Exception as e:
-            log.error("ASR en load failed: %s", type(e).__name__)
-    except Exception as e:
-        log.error("ASR load failed: %s", type(e).__name__)
+            log.error("ASR final %s load failed: %s", lang, type(e).__name__)
+    if ok == 2:
+        STATE["asr"] = True
+    elif ok == 0:
         STATE["mode"] = "demo"
+    fast = 0
+    for lang in ("no", "en"):
+        try:
+            asr.warm_up(lang, "fast")
+            fast += 1
+        except Exception as e:
+            log.error("ASR fast %s load failed: %s", lang, type(e).__name__)
+    STATE["asr_fast"] = fast == 2
 
 
 @app.on_event("startup")
@@ -68,9 +70,10 @@ async def status():
     demo = STATE["mode"] == "demo"
     reach = await run_in_threadpool(clinical.hpc_reachable)
     eng = "demo" if demo else ("local" if os.getenv("BEDSIDE_MT") == "local" or not reach else "hpc")
-    return {"mode": STATE["mode"], "asr_model": asr.MODEL_ID, "mt_model": "phrasebook" if demo else mt.MODEL_ID,
+    return {"mode": STATE["mode"], "asr_model": asr.MODEL_ID, "mt_model": "phrasebook" if demo else mt.MODEL_ID, "asr_fast_model": asr.FAST_ID,
             "engine": eng, "hpc_reachable": reach, "hpc_model": clinical.MODEL,
-            "ready": {"asr": STATE["asr"], "mt": STATE["mt"] or demo}}
+            "ready": {"asr": STATE["asr"], "asr_fast": STATE["asr_fast"],
+                      "mt": bool(reach or demo or mt.loaded() or mt.available()), "mt_loaded": mt.loaded()}}
 
 
 @app.get("/api/quick")
@@ -92,7 +95,8 @@ def decode_wav(data: bytes):
 
 
 @app.post("/api/transcribe")
-async def transcribe(audio: UploadFile = File(...), lang: str = Form("no")):
+async def transcribe(audio: UploadFile = File(...), lang: str = Form("no"), partial: str = Form("")):
+    part = partial.strip().lower() in ("1", "true", "yes")
     if lang not in ("no", "en"):
         return JSONResponse({"error": "bad_lang", "detail": "lang must be no|en"}, 400)
     try:
@@ -104,18 +108,25 @@ async def transcribe(audio: UploadFile = File(...), lang: str = Form("no")):
         pairs = mt._PAIRS[:8]
         STATE["demo_i"] = STATE.get("demo_i", -1) + 1
         no, en = pairs[STATE["demo_i"] % len(pairs)]
-        return {"text": no if lang == "no" else en, "demo": True}
-    if not STATE["asr"]:
+        return {"text": no if lang == "no" else en, "demo": True, "partial": part}
+    if part:
+        if not STATE["asr_fast"]:
+            return {"text": "", "partial": True, "busy": True}
+    elif not STATE["asr"]:
         return JSONResponse({"error": "asr_unavailable", "detail": "ASR model not ready"}, 503)
     t0 = time.time()
     try:
-        r = await run_in_threadpool(asr.transcribe, pcm, lang)
+        r = await run_in_threadpool(asr.transcribe, pcm, lang, part)
     except Exception as e:
         return JSONResponse({"error": "transcribe_failed", "detail": type(e).__name__}, 500)
     ms = int((time.time() - t0) * 1000)
+    if r.get("busy"):
+        return {"text": "", "partial": True, "busy": True, "ms": ms}
     if r["no_speech"]:
+        if part:
+            return {"text": "", "partial": True, "ms": ms}
         return {"error": "no_speech", "ms": ms}
-    return {"text": r["text"], "lang": lang, "engine": r.get("engine"), "ms": ms}
+    return {"text": r["text"], "lang": lang, "engine": r.get("engine"), "partial": part, "ms": ms}
 
 
 class TReq(BaseModel):

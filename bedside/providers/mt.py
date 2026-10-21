@@ -11,6 +11,19 @@ _lock = threading.Lock()
 _run_lock = threading.Lock()
 
 
+def loaded() -> bool:
+    return _model is not None
+
+
+def available() -> bool:
+    """True if the local model files are cached (can be lazily loaded)."""
+    try:
+        from huggingface_hub import try_to_load_from_cache
+        return isinstance(try_to_load_from_cache(MODEL_ID, "config.json"), str)
+    except Exception:
+        return False
+
+
 def load():
     global _tok, _model, _dev
     with _lock:

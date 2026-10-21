@@ -3,10 +3,13 @@
   "use strict";
   const q=new URLSearchParams(location.search);
   const room=q.get("room")||"1";
-  let lang=q.get("lang")==="en"?"en":"no";   // patient language; WS state overrides
+  const urlLang=(q.get("lang")==="en"||q.get("lang")==="no")?q.get("lang"):null;   // host app's interface language
+  let lang=urlLang||"no";   // patient language; WS state / lang events override
   let workerLang=lang==="no"?"en":"no";
+  let langSent=false;
+  const LNAME={no:"Norsk",en:"English"};
   const S={
-    no:{call:"Hent en person",speak:"Snakk",reply:"Svar",done:"Ferdig",ready:"Trykk og snakk",hold:"Hold inne og snakk",tapOnce:"eller trykk én gang",lis:"Jeg lytter …",relDone:"Slipp når du er ferdig",tapDone:"Trykk når du er ferdig",chat:"Samtale",close:"Lukk",
+    no:{call:"Hent en person",speak:"Snakk",reply:"Svar",done:"Ferdig",ready:"Trykk og snakk",hold:"Hold inne og snakk",tapOnce:"eller trykk én gang",dirYou:"Du snakker",dirNurse:"Sykepleieren leser",lis:"Jeg lytter …",relDone:"Slipp når du er ferdig",tapDone:"Trykk når du er ferdig",chat:"Samtale",close:"Lukk",
       listening:"Jeg lytter … trykk når du er ferdig",wait:"Et øyeblikk …",translating:"Oversetter …",said:"Du sa:",no:"Nei, prøv igjen",yes:"Ja, send",
       sent:"Sendt",quiet:"Sendt. Se opp – sykepleieren leser nå.",read:"Les høyt",you:"Du",nurse:"Helsepersonell",retry:"Prøv igjen",
       coming:"Noen kommer",onway:"En person er på vei",empty:"Trykk på Snakk, eller bruk et av svarene under.",
@@ -18,7 +21,7 @@
       err:{no_speech:"Jeg hørte ingenting. Prøv igjen.",noisy:"Det var mye lyd rundt. Prøv igjen, litt nærmere.",
         mic_denied:"Mikrofonen er slått av. En person kan hjelpe.",offline:"Meldingen kom ikke fram. Prøv igjen.",
         translate_failed:"Oversettelsen virker ikke akkurat nå. En person kan hjelpe."}},
-    en:{call:"Call a person",speak:"Speak",reply:"Reply",done:"Done",ready:"Tap and speak",hold:"Hold to talk",tapOnce:"or tap once",lis:"Listening …",relDone:"Let go when done",tapDone:"Tap when done",chat:"Conversation",close:"Close",
+    en:{call:"Call a person",speak:"Speak",reply:"Reply",done:"Done",ready:"Tap and speak",hold:"Hold to talk",tapOnce:"or tap once",dirYou:"You speak",dirNurse:"Nurse reads",lis:"Listening …",relDone:"Let go when done",tapDone:"Tap when done",chat:"Conversation",close:"Close",
       listening:"Listening … tap when done",wait:"One moment …",translating:"Translating …",said:"You said:",no:"No, try again",yes:"Yes, send",
       sent:"Sent",quiet:"Sent. Look up – the nurse is reading.",read:"Read aloud",you:"You",nurse:"Nurse",retry:"Try again",
       coming:"Someone is coming",onway:"Someone is on the way",empty:"Tap Speak, or use one of the answers below.",
@@ -53,6 +56,7 @@
     cloudoff:'<path d="M7 18a5 5 0 0 1-.5-10 6.5 6.5 0 0 1 12.3 1.5A4.2 4.2 0 0 1 18 18zM3 3l18 18"/>',
     bubblex:'<path d="M4 5h16v11H10l-4 4v-4H4zM9.5 8.5l5 4M14.5 8.5l-5 4"/>',
     chat:'<path d="M4 5h16v11H10l-4 4v-4H4z"/>',
+    chevr:'<path d="M9 6l6 6-6 6"/>',
     list:'<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>'
   };
   const ERRICON={no_speech:"ear",noisy:"waves",mic_denied:"micoff",offline:"cloudoff",translate_failed:"bubblex"};
@@ -81,7 +85,9 @@
   const HOLD_MS=400;
 
   const ws=BedsideWS.create("patient",room,{
-    onOpen(){},
+    onOpen(){
+      if(urlLang&&!langSent){ langSent=true; setTimeout(()=>{ if(!ws.send({type:"set_lang",patient:urlLang,worker:urlLang==="no"?"en":"no"})) langSent=false; },0); }
+    },
     onClose(){},
     onMessage(m){
       if(m.type==="state"){ if(m.call) showCall("coming");
@@ -187,7 +193,11 @@
     $("dtitle").textContent=t().chat; $("dclose").textContent=t().close;
     ttsOK=false; BedsideTTS.ready(lang).then(ok=>{ ttsOK=ok; renderConv(); });
     turns.forEach(x=>{ x.text=textFor(x.msg); });
-    renderBadge(); renderSummary(); render(); renderConv();
+    renderDir(); renderBadge(); renderSummary(); render(); renderConv();
+  }
+  function renderDir(){
+    const d=$("dir"), T=t(); if(!d) return;
+    d.innerHTML=`<span>${esc(T.dirYou+" "+LNAME[lang])}</span>${svg("chevr")}<span>${esc(T.dirNurse+" "+LNAME[workerLang])}</span>`;
   }
 
   function renderBadge(){
@@ -260,6 +270,32 @@
   }
   document.addEventListener("visibilitychange",()=>{ if(state==="received") armSeen(); else clearTimeout(seenTimer); });
 
+  const CAPHTML='<div class="body"><p class="st cap" id="cap"></p></div>';
+  let partialText="", fin=null;   // live caption text; fin = background final transcription {done,p,text,draft}
+  function showCaption(){
+    const box=$("statebox"); if(!box||state!=="listening") return;
+    let cap=$("cap");
+    if(!partialText){ if(cap){ box.hidden=true; box.className="statebox"; box.innerHTML=""; } return; }
+    if(!cap){ box.hidden=false; box.className="statebox caption"; box.innerHTML=CAPHTML; cap=$("cap"); }
+    cap.textContent=partialText;
+  }
+  function applyFinal(f,r){
+    if(fin!==f) return;   // superseded (patient said "no" / spoke again)
+    const ok=r&&!r.error&&r.text&&String(r.text).trim();
+    const oldText=f.text;
+    f.done=true; f.draft=false;
+    if(ok) f.text=String(r.text).trim();
+    if(state==="translating"&&ctx.fin===f){ ctx.text=f.text; return; }   // send() resumes and checks
+    if(state!=="confirm"||ctx.fin!==f) return;
+    const el=$("said"); if(!el) return;
+    ctx.draft=false; el.classList.remove("draft");
+    if(f.text!==oldText){
+      ctx.text=f.text; spec=null; specStart(f.text);
+      el.textContent=f.text; el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap");
+      $("live").textContent=t().said+" "+f.text; $("statebox").setAttribute("aria-label",t().said+" "+f.text);
+    }
+  }
+
   const DOTS='<div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>';
   function pillLabel(p){ const o=PILL[p.id]; return (o&&o[lang])||p[lang]||p.no||""; }
   function renderQuick(){
@@ -292,11 +328,13 @@
     let cls="statebox", inner="", live="", controls="";
     switch(state){
       case "ready": live=T.hold; break;
-      case "listening": live=T.lis; break;
+      case "listening": live=T.lis;
+        if(partialText){ cls+=" caption"; inner=CAPHTML; }
+        break;
       case "understanding":
       case "translating": live=state==="translating"?T.translating:T.wait; break;
       case "confirm":
-        cls+=" confirm big"; inner=`<div class="body"><p class="lab">${esc(T.said)}</p><p class="st" id="said"></p></div>`; live=T.said+" "+ctx.text;
+        cls+=" confirm big"; inner=`<div class="body"><p class="lab">${esc(T.said)}</p><p class="st${ctx.draft?" draft":""}" id="said"></p></div>`; live=T.said+" "+ctx.text;
         controls=`<div class="btnrow two"><button type="button" class="ans no" id="no">${svg("cross")}<span>${esc(T.no)}</span></button><button type="button" class="ans yes" id="yes">${svg("check")}<span>${esc(T.yes)}</span></button></div>`; break;
       case "unsure": {
         cls+=" unsure big";
@@ -318,6 +356,7 @@
     }
     box.hidden=!inner; box.className=cls; box.innerHTML=inner; box.setAttribute("aria-label",live);
     if(state==="confirm") $("said").textContent=ctx.text;
+    if(state==="listening"&&partialText&&$("cap")) $("cap").textContent=partialText;
     if(state==="unsure"&&$("cq")) $("cq").textContent=ctx.r.clarify_question;
     ctl.innerHTML=controls;
     $("live").textContent=live;
@@ -326,7 +365,7 @@
   }
   function bind(){
     const on=(id,f)=>{ const e=$(id); if(e) e.onclick=f; };
-    on("no",()=>{ spec=null; go("ready"); });
+    on("no",()=>{ spec=null; fin=null; go("ready"); });
     on("yes",()=>send());
     on("again",()=>{ micMode="tap"; startListening(); });
     on("anyway",()=>sendAnyway());
@@ -387,9 +426,9 @@
   function fail(code,detail){ BedsideTTS.stop(); handle=null; go("error",{error:code,detail}); }
 
   async function startListening(){
-    BedsideTTS.stop(); confirmedText=null; spec=null; cue(true);
+    BedsideTTS.stop(); confirmedText=null; spec=null; fin=null; partialText=""; cue(true);
     const prevMsg=ctx.msg; if(state==="received"&&prevMsg) ctx.seenSent=true;
-    const h=await BedsideAudio.start({onLevel(r){
+    const h=await BedsideAudio.start({partialLang:lang,onPartial(txt){ partialText=String(txt||"").trim(); showCaption(); },onLevel(r){
       const el=$("speak"); if(el&&state==="listening"){ const v=Math.min(1,r*8); el.style.setProperty("--lvl",v.toFixed(2)); }
     }});
     if(h.error){ fail(h.error); return; }
@@ -400,7 +439,18 @@
     const res=await h.result; handle=null; press=null;
     if(state!=="listening") return;
     cue(false);
+    partialText="";
     if(res.error){ fail(res.error); return; }
+    const draft=String(res.partial||"").trim();
+    if(draft){
+      // instant confirm on the draft; final transcription runs in the background
+      const f={done:false,draft:true,text:draft,p:null};
+      f.p=Promise.resolve().then(()=>BedsideAudio.transcribe(res.wav,lang)).catch(err=>({error:"translate_failed",detail:String(err&&err.message||err)}));
+      fin=f; specStart(draft);
+      go("confirm",{text:draft,draft:true,fin:f});
+      f.p.then(r=>applyFinal(f,r));
+      return;
+    }
     go("understanding");
     const r=await BedsideAudio.transcribe(res.wav,lang);
     if(r.error){ fail(r.error,r.detail); return; }
@@ -424,7 +474,18 @@
     return Object.assign({type:"send",from:"patient",originalText:text,originalLang:lang,translatedText:tr,targetLang:workerLang,quick:false},extra||{});
   }
   async function send(){
-    const text=ctx.text; confirmedText=text;
+    let text=ctx.text;
+    const f=ctx.fin;
+    if(f&&!f.done){   // final transcript not here yet: wait, never send the unconfirmed draft
+      const shown=text;
+      go("translating",{text,fin:f});
+      await f.p;
+      if(fin!==f||state!=="translating"||ctx.fin!==f) return;
+      if(!f.done) await new Promise(r=>setTimeout(r,0));
+      text=f.text;
+      if(text!==shown){ spec=null; specStart(text); go("confirm",{text}); return; }   // final differs from what was confirmed: show it for a fresh yes
+    } else if(f) text=f.text;
+    ctx.text=text; confirmedText=text;
     if(lang===workerLang){ pending=mkPending(text,text,{quality:"ok",engine:"none",warnings:[]}); deliver(); return; }
     if(!spec||spec.key!==specKey(text)) specStart(text);
     const e=spec;

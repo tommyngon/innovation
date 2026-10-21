@@ -261,14 +261,20 @@
   async function toggleMic(){
     if(listening){ handle&&handle.stop(); return; }
     errInfo=null; renderErr();
-    const h=await BedsideAudio.start({onLevel(r){ const i=document.querySelector("#lvl i"); if(i) i.style.width=Math.min(100,r*800)+"%"; }});
+    let liveOn=true; const tx=$("txt");
+    const h=await BedsideAudio.start({
+      onLevel(r){ const i=document.querySelector("#lvl i"); if(i) i.style.width=Math.min(100,r*800)+"%"; },
+      partialLang:L.worker,
+      onPartial(t){ if(!liveOn) return; tx.value=t; tx.classList.add("live"); }
+    });
     if(h.error){ errInfo={code:h.error}; renderErr(); return; }
     handle=h; listening=true; renderMic();
     const res=await h.result; handle=null; listening=false;
-    if(res.error){ errInfo={code:res.error}; busy=false; renderTop(); renderErr(); return; }
+    const endLive=()=>{ liveOn=false; tx.classList.remove("live"); };
+    if(res.error){ if(tx.classList.contains("live")){ tx.value=""; } endLive(); errInfo={code:res.error}; busy=false; renderTop(); renderErr(); return; }
     busy=true; renderTop();
     const r=await BedsideAudio.transcribe(res.wav,L.worker);
-    busy=false;
+    busy=false; endLive();
     if(r.error){ errInfo={code:r.error,detail:r.detail}; renderTop(); renderErr(); return; }
     const text=(r.text||"").trim();
     $("txt").value=text;

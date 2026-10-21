@@ -1,3 +1,4 @@
+import os
 import re
 import threading
 
@@ -5,9 +6,13 @@ import numpy as np
 
 MODEL_NO = "NbAiLab/nb-whisper-small"
 MODEL_EN = "openai/whisper-small.en"
+FAST_NO = "NbAiLab/nb-whisper-base"
+FAST_EN = "openai/whisper-base.en"
+EN_ONLY = (MODEL_EN, FAST_EN)  # English-only Whisper rejects task/language arguments
 MODEL_ID = MODEL_NO + " + " + MODEL_EN
-_pipes = {}
-_lock = threading.Lock()
+FAST_ID = FAST_NO + " + " + FAST_EN
+_ents = {}  # (tier, lang) -> entry {pipe, model, lock}; tier = "final" | "fast"
+_load_lock = threading.Lock()
 HALLU = ("teksting av", "undertekster", "takk for at du så på", "subtitles by", "takk for følget",
          "thanks for watching", "thank you for watching", "subscribe", "like and subscribe", "please subscribe",
          "amara.org", "www.", ".com", "copyright", "©", "transcribed by", "see you in the next",
@@ -25,7 +30,11 @@ def _make(model, dev):
     return pipeline("automatic-speech-recognition", model=model, device=dev, torch_dtype=torch.float32)
 
 
-def _build(model):
+def _build(model, fast=False):
+    # Draft (live caption) models run on the CPU: measured 0.5 s alone like the GPU, but about 1 s instead of
+    # 1.2-3.5 s while the accurate final model is using the GPU (no contention). Override: BEDSIDE_FAST_DEVICE=mps.
+    if fast:
+        return _make(model, os.environ.get("BEDSIDE_FAST_DEVICE", "cpu"))
     try:
         return _make(model, _device())
     except Exception:
@@ -36,21 +45,27 @@ def _key(lang):
     return "en" if lang == "en" else "no"
 
 
-def get_pipe(lang="no"):
-    """Returns (pipeline, model_id). English uses whisper-small.en; falls back to nb-whisper if unavailable."""
-    k = _key(lang)
-    with _lock:
-        if k not in _pipes:
-            if k == "en":
+def _entry(tier, lang):
+    """Entry with its own inference lock. English falls back to the Norwegian model if unavailable."""
+    k = (tier, _key(lang))
+    with _load_lock:
+        if k not in _ents:
+            no_m, en_m = (FAST_NO, FAST_EN) if tier == "fast" else (MODEL_NO, MODEL_EN)
+            if k[1] == "en":
                 try:
-                    _pipes[k] = (_build(MODEL_EN), MODEL_EN)
+                    _ents[k] = {"pipe": _build(en_m, tier == "fast"), "model": en_m, "lock": threading.Lock()}
                 except Exception:
-                    if "no" not in _pipes:
-                        _pipes["no"] = (_build(MODEL_NO), MODEL_NO)
-                    _pipes[k] = _pipes["no"]
+                    if (tier, "no") not in _ents:
+                        _ents[(tier, "no")] = {"pipe": _build(no_m, tier == "fast"), "model": no_m, "lock": threading.Lock()}
+                    _ents[k] = _ents[(tier, "no")]  # shared entry -> shared lock
             else:
-                _pipes[k] = (_build(MODEL_NO), MODEL_NO)
-        return _pipes[k]
+                _ents[k] = {"pipe": _build(no_m, tier == "fast"), "model": no_m, "lock": threading.Lock()}
+        return _ents[k]
+
+
+def get_pipe(lang="no", tier="final"):
+    e = _entry(tier, lang)
+    return e["pipe"], e["model"]
 
 
 def _hallucinated(text: str) -> bool:
@@ -91,42 +106,57 @@ def _run(p, inp, kw, long_audio):
     return p(inp, generate_kwargs=kw)
 
 
-def warm_up(lang: str):
-    """Run one dummy 1 s clip so the first real request does not pay kernel-compile/first-run cost."""
-    p, model = get_pipe(lang)
-    rng = np.random.RandomState(0)
-    dummy = (rng.randn(16000) * 0.02).astype(np.float32)
-    kw = {"num_beams": 1}
-    if model != MODEL_EN:
-        kw.update(task="transcribe", language="en" if lang == "en" else "no")
-    try:
-        p({"raw": dummy, "sampling_rate": 16000}, generate_kwargs=kw)
-    except Exception:
-        pass
-
-
-def transcribe(pcm: np.ndarray, lang: str) -> dict:
-    if pcm.size < 1600 or float(np.sqrt(np.mean(pcm ** 2))) < 0.003:
-        return {"text": "", "no_speech": True}
-    pcm = trim_silence(pcm)
-    p, model = get_pipe(lang)
-    en_only = model == MODEL_EN
+def _kw(model, lang):
     kw = {"num_beams": 1}  # greedy: ~2x faster than beam 5, same text on short phrases
-    if not en_only:  # English-only Whisper rejects task/language arguments
+    if model not in EN_ONLY:
         kw["task"] = "transcribe"
         kw["language"] = "en" if lang == "en" else "no"
-    inp = {"raw": pcm, "sampling_rate": 16000}
-    long_audio = pcm.size > 28 * 16000
+    return kw
+
+
+def warm_up(lang: str, tier: str = "final"):
+    """Run one dummy 1 s clip so the first real request does not pay kernel-compile/first-run cost."""
+    e = _entry(tier, lang)
+    dummy = (np.random.RandomState(0).randn(16000) * 0.02).astype(np.float32)
+    with e["lock"]:
+        try:
+            e["pipe"]({"raw": dummy, "sampling_rate": 16000}, generate_kwargs=_kw(e["model"], lang))
+        except Exception:
+            pass
+
+
+def transcribe(pcm: np.ndarray, lang: str, partial: bool = False) -> dict:
+    """partial=True: fast draft model, non-blocking (busy -> empty text), no hallucination filter."""
+    if pcm.size < 1600 or float(np.sqrt(np.mean(pcm ** 2))) < 0.003:
+        return {"text": "", "no_speech": True, "partial": partial}
+    pcm = trim_silence(pcm)
+    e = _entry("fast" if partial else "final", lang)
+    lk = e["lock"]
+    if partial:
+        if not lk.acquire(blocking=False):
+            return {"text": "", "no_speech": False, "partial": True, "busy": True}
+    else:
+        lk.acquire()
     try:
-        out = _run(p, inp, kw, long_audio)
-    except Exception:
-        if not str(p.device).startswith("mps"):
-            raise
-        with _lock:
+        p, model = e["pipe"], e["model"]
+        kw = _kw(model, lang)
+        if partial:
+            kw["max_new_tokens"] = 120
+        inp = {"raw": pcm, "sampling_rate": 16000}
+        long_audio = pcm.size > 28 * 16000
+        try:
+            out = _run(p, inp, kw, long_audio)
+        except Exception:
+            if not str(p.device).startswith("mps"):
+                raise
             p = _make(model, "cpu")
-            _pipes[_key(lang)] = (p, model)
-        out = _run(p, inp, kw, long_audio)
+            e["pipe"] = p
+            out = _run(p, inp, kw, long_audio)
+    finally:
+        lk.release()
     text = out["text"].strip()
+    if partial:
+        return {"text": text, "no_speech": False, "partial": True, "engine": model, "lang": lang}
     if _hallucinated(text):
-        return {"text": "", "no_speech": True}
-    return {"text": text, "no_speech": False, "engine": model, "lang": lang}
+        return {"text": "", "no_speech": True, "partial": False}
+    return {"text": text, "no_speech": False, "partial": False, "engine": model, "lang": lang}

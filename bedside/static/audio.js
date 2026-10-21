@@ -1,6 +1,8 @@
 /* Mic capture -> 16 kHz mono PCM16 WAV, plus API helpers. window.BedsideAudio
    start(opts) -> {error} | {stop(), result:Promise<{wav}|{error}>}
-   opts: onLevel(rms 0..1), maxMs, silenceMs                              */
+   opts: onLevel(rms 0..1), maxMs, silenceMs,
+        onPartial(text), partialLang("no"|"en"), partialEveryMs (live captions)
+   result: {wav, partial}|{error}                                          */
 (function(){
   const SPEECH_MIN=0.02;         // absolute RMS floor for "speech"
   async function toWav16k(chunks, rate){
@@ -40,11 +42,36 @@
 
     const chunks=[]; const t0=performance.now();
     let floorSum=0,floorN=0,floor=null,peak=0,speechStarted=false,lastLoud=0,finished=false,held=false;
+    let latestPartial="", partSeq=0, shownSeq=0, partInflight=false, lastPartSamples=0, totalSamples=0, partTimer=null;
+    const partEvery=opts.partialEveryMs||900;
+    function partialTick(){
+      if(finished||partInflight||!opts.partialLang||!opts.onPartial) return;
+      if((totalSamples-lastPartSamples)/rate<0.6) return;
+      lastPartSamples=totalSamples; partInflight=true;
+      const seq=++partSeq, maxSamp=Math.floor(28*rate);
+      let sub=[], n=0;
+      for(let i=chunks.length-1;i>=0&&n<maxSamp;i--){ sub.unshift(chunks[i]); n+=chunks[i].length; }
+      (async()=>{
+        try{
+          const wav=await toWav16k(sub,rate);
+          const fd=new FormData(); fd.append("audio",wav,"audio.wav"); fd.append("lang",opts.partialLang); fd.append("partial","1");
+          const r=await fetch("/api/transcribe",{method:"POST",body:fd});
+          const j=await r.json();
+          const t=(r.ok&&j&&!j.busy&&!j.error&&j.text)?String(j.text).trim():"";
+          if(t&&seq>shownSeq){
+            shownSeq=seq; latestPartial=t;
+            try{ opts.onPartial(t); }catch(e){}
+          }
+        }catch(e){}
+        partInflight=false;
+      })();
+    }
+    if(opts.partialLang&&opts.onPartial) partTimer=setInterval(partialTick,partEvery);
     let resolveFn; const result=new Promise(r=>{resolveFn=r;});
 
     function finish(){
       if(finished) return; finished=true;
-      clearTimeout(maxTimer); clearTimeout(quietTimer);
+      clearTimeout(maxTimer); clearTimeout(quietTimer); if(partTimer){ clearInterval(partTimer); partTimer=null; }
       try{proc.disconnect();srcNode.disconnect();}catch(e){}
       stream.getTracks().forEach(t=>t.stop());
       ctx.close().catch(()=>{});
@@ -56,7 +83,7 @@
         return resolveFn({error:"no_speech"});
       }
       if(f>0.04&&peak/f<3) return resolveFn({error:"noisy"});
-      toWav16k(chunks,rate).then(wav=>resolveFn({wav}),()=>resolveFn({error:"translate_failed"}));
+      toWav16k(chunks,rate).then(wav=>resolveFn({wav,partial:latestPartial}),()=>resolveFn({error:"translate_failed"}));
     }
     const maxTimer=setTimeout(finish,maxMs);
     // Nothing said within a few seconds: give kind feedback instead of waiting 30 s
@@ -64,7 +91,7 @@
 
     proc.onaudioprocess=(e)=>{
       if(finished) return;
-      const d=e.inputBuffer.getChannelData(0); chunks.push(new Float32Array(d));
+      const d=e.inputBuffer.getChannelData(0); chunks.push(new Float32Array(d)); totalSamples+=d.length;
       let s=0; for(let i=0;i<d.length;i++) s+=d[i]*d[i];
       const rms=Math.sqrt(s/d.length), now=performance.now(), el=now-t0;
       if(opts.onLevel) opts.onLevel(rms);
