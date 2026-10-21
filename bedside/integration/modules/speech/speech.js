@@ -14,8 +14,17 @@ import { createScreen, el } from "../../js/ui.js";
 
 const DEFAULT_BEDSIDE_URL = "http://localhost:8020";
 
+const READY_TIMEOUT_MS = 4000;
+// Shown only when the service can't be reached (kept here so the module is self-contained).
+const UNAVAILABLE = {
+  en: "Speech translation is not available right now. Please ask a nurse for help.",
+  nl: "Vertalen met spraak is nu niet beschikbaar. Vraag het aan een verpleegkundige.",
+  no: "Taleoversettelse er ikke tilgjengelig akkurat nå. Be en sykepleier om hjelp.",
+};
+
 let frame = null;
 let onMessage = null;
+let readyTimer = null;
 
 /** Load speech.css once (relative to this file). */
 function loadStyles() {
@@ -40,12 +49,21 @@ export function render(container, ctx) {
   frame = el("iframe", { class: "speech-frame", src, title: ctx.t("speech.title"), allow: "microphone" });
   body.append(frame);
 
+  // If the service never answers (not running, blocked, offline), say so instead of a blank screen.
+  readyTimer = setTimeout(() => {
+    const text = UNAVAILABLE[ctx.lang] || UNAVAILABLE.en;
+    frame?.classList.add("speech-frame-hidden");
+    body.append(el("p", { class: "speech-unavailable", role: "status" }, [text]));
+  }, READY_TIMEOUT_MS);
+
   onMessage = (event) => {
     if (event.origin !== new URL(base).origin) return; // only trust the bedside service
     const d = event.data;
     if (!d || d.source !== "bedside") return;
 
-    if (d.type === "message" && d.details) {
+    if (d.type === "ready") {
+      clearTimeout(readyTimer);
+    } else if (d.type === "message" && d.details) {
       // The four fields documented in README.md
       ctx.sendNotification({ type: "speech", details: d.details });
     } else if (d.type === "call_person") {
@@ -62,6 +80,7 @@ export function render(container, ctx) {
 
 export function cleanup() {
   // Removing the iframe also releases the microphone.
+  clearTimeout(readyTimer);
   if (onMessage) window.removeEventListener("message", onMessage);
   if (frame) {
     frame.src = "about:blank";

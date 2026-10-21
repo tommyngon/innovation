@@ -460,6 +460,7 @@
     sentTimer=setTimeout(()=>go("quiet"),1500);
   }
 
+  embedNotify("ready");   // tells the parent app the service is reachable
   $("callBtn").onclick=callPerson;
   $("tabBtn").onclick=()=>setDrawer(true);
   $("dclose").onclick=()=>setDrawer(false);

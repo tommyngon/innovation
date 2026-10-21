@@ -18,3 +18,16 @@
   min-height: 70vh;
   background: transparent;
 }
+
+.speech-frame-hidden {
+  display: none;
+}
+
+.speech-unavailable {
+  margin: var(--pad, 16px);
+  padding: var(--pad, 16px);
+  font-size: 24px;
+  font-weight: 700;
+  border: 3px solid var(--color-border, #1b1b1b);
+  background: var(--color-surface, #fff);
+}
