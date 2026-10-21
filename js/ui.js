@@ -6,7 +6,7 @@
     createScreen(ctx, options)     sub-screen with ← Back button + title
     createBackButton(ctx, target)  square "← Back" button
     createTileGrid(cols, rows)     grid that keeps its tiles square
-    createTile(options)            one big square tile (icon + label)
+    createTile(options)            one big rounded tile (label top-left, icon below)
 
   Every interactive element is a real <button> with an aria-label.
   Tiles and the Back button say their label when voice assistance is on.
@@ -43,7 +43,35 @@ export function renderHeader(headerEl, ctx) {
     el("span", { class: "app-header-info" }, [
       ctx.t("header.roomPatient", { room: ctx.room, patient: ctx.patient }),
     ]),
-    createVoiceToggle(ctx),
+    el("div", { class: "app-header-actions" }, [
+      createLangSwitch(ctx),
+      createVoiceToggle(ctx),
+    ]),
+  );
+}
+
+/**
+ * Compact "EN | NO" language switch. Sets ?lang=… (keeping patient, room and
+ * the #hash) and reloads the page.
+ */
+function createLangSwitch(ctx) {
+  const options = [
+    { code: "en", label: "EN", name: "English" },
+    { code: "no", label: "NO", name: "Norsk" },
+  ];
+  return el("div", { class: "lang-switch", role: "group", "aria-label": "Language / Språk" },
+    options.map(({ code, label, name }) => el("button", {
+      type: "button",
+      class: "lang-switch-btn",
+      "aria-label": name,
+      "aria-pressed": String(ctx.lang === code),
+      onClick: () => {
+        if (ctx.lang === code) return;
+        const url = new URL(location.href);
+        url.searchParams.set("lang", code);   // hash is kept by URL
+        location.assign(url.toString());      // the query changes, so this reloads
+      },
+    }, [label])),
   );
 }
 
@@ -125,7 +153,8 @@ export function createTileGrid(layout = "2x2") {
 
 /**
  * One big square tile.
- *   createTile({ icon: "🚻", label: "Toilet", accent: "toilet", onClick })
+ *   createTile({ icon: iconNode("toilet"), label: "Toilet", accent: "toilet", onClick })
+ * `icon` can be a DOM node (SVG) or a string (emoji/text).
  */
 export function createTile({ icon, label, accent, onClick }) {
   return el("button", {
@@ -138,7 +167,7 @@ export function createTile({ icon, label, accent, onClick }) {
       onClick?.(event);
     },
   }, [
-    el("span", { class: "icon tile-icon", "aria-hidden": "true" }, [icon]),
     el("span", { class: "tile-label" }, [label]),
+    el("span", { class: "icon tile-icon", "aria-hidden": "true" }, [icon]),
   ]);
 }

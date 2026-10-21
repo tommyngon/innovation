@@ -1,13 +1,13 @@
 /*
   home.js — the start screen: 4 big square tiles in a 2 × 2 grid.
 
-    🚻 Toilet        -> #/toilet      (sends the request immediately)
-    🍽️ Food & drink  -> #/food-drink
-    😣 Pain / unwell -> #/pain   (body map + nauseous / anxious / dizzy)
-    🗣️ Speak         -> #/speech
+    toilet icon      Toilet             -> #/toilet      (sends the request immediately)
+    foodDrink icon   Food & drink       -> #/food-drink
+    pain icon        Pain & how I feel  -> #/pain   (body map + nauseous / anxious / dizzy)
+    speech icon      Speak              -> #/speech
 
-  The icon is the main message (many patients cannot read the language),
-  the label underneath is a help.
+  Icons are SVGs from js/icons.js (iconNode). Each tile has the label at the
+  top-left and the large icon beneath it, on a flat playful colour.
 
   Above the tiles: a low "Your requests" strip with the requests sent from
   this device and their live status (see js/request-status.js). It is only
@@ -16,12 +16,13 @@
 
 import { createTile, createTileGrid, el } from "../../js/ui.js";
 import { getVisibleRequests, onRequestsChange } from "../../js/request-status.js";
+import { iconNode, typeIconNode } from "../../js/icons.js";
 
 const TILES = [
-  { icon: "🚻", labelKey: "home.toilet",    accent: "toilet", route: "#/toilet" },
-  { icon: "🍽️", labelKey: "home.foodDrink", accent: "food",   route: "#/food-drink" },
-  { icon: "😣", labelKey: "home.pain",      accent: "pain",   route: "#/pain" },
-  { icon: "🗣️", labelKey: "home.speech",    accent: "speech", route: "#/speech" },
+  { icon: "toilet",    labelKey: "home.toilet",    accent: "toilet", route: "#/toilet" },
+  { icon: "foodDrink", labelKey: "home.foodDrink", accent: "food",   route: "#/food-drink" },
+  { icon: "pain",      labelKey: "home.pain",      accent: "pain",   route: "#/pain" },
+  { icon: "speech",    labelKey: "home.speech",    accent: "speech", route: "#/speech" },
 ];
 
 const STATUS_KEYS = {
@@ -36,7 +37,7 @@ export function render(container, ctx) {
   const grid = createTileGrid("2x2");
   for (const tile of TILES) {
     grid.append(createTile({
-      icon: tile.icon,
+      icon: iconNode(tile.icon, { className: "tile-svg" }),
       label: ctx.t(tile.labelKey),
       accent: tile.accent,
       onClick: () => ctx.navigate(tile.route),
@@ -73,7 +74,9 @@ function requestChip(request, ctx) {
   });
   const status = ctx.t(STATUS_KEYS[request.status]);
   return el("li", { class: "request-chip", "data-status": request.status }, [
-    el("span", { class: "icon request-chip-icon", "aria-hidden": "true" }, [request.icon || "🔔"]),
+    el("span", { class: "icon request-chip-icon", "aria-hidden": "true" }, [
+      typeIconNode(request.type, { size: 28 }) || request.icon || "🔔",
+    ]),
     el("span", { class: "request-chip-time" }, [time]),
     el("span", { class: "request-chip-status" }, [status]),
   ]);

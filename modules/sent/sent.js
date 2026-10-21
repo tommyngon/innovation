@@ -15,6 +15,7 @@
 
 import { el } from "../../js/ui.js";
 import { speak } from "../../js/voice.js";
+import { typeIconNode } from "../../js/icons.js";
 
 const AUTO_RETURN_SECONDS = 6;
 const WARNING_RETURN_SECONDS = 12;   // more time to read the warning
@@ -38,7 +39,7 @@ export function render(container, ctx) {
     el("div", { class: "sent-icons icon", "aria-hidden": "true" }, [
       mark,
       result && result.type !== "pain"
-        ? el("span", {}, [result.icon])
+        ? el("span", {}, [typeIconNode(result.type)])
         : null,
     ]),
     message,

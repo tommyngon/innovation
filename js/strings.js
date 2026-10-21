@@ -28,7 +28,7 @@ export const STRINGS = {
 
     "home.toilet": "Toilet",
     "home.foodDrink": "Food & drink",
-    "home.pain": "Pain / unwell",
+    "home.pain": "Pain & how I feel",
     "home.speech": "Speak",
 
     "foodDrink.title": "Food & drink",
@@ -265,7 +265,7 @@ export const STRINGS = {
 
     "home.toilet": "Toilet",
     "home.foodDrink": "Eten & drinken",
-    "home.pain": "Pijn / onwel",
+    "home.pain": "Pijn & hoe ik me voel",
     "home.speech": "Spreken",
 
     "foodDrink.title": "Eten & drinken",
@@ -501,7 +501,7 @@ export const STRINGS = {
 
     "home.toilet": "Toalett",
     "home.foodDrink": "Mat og drikke",
-    "home.pain": "Smerte / uvel",
+    "home.pain": "Smerte & hvordan jeg har det",
     "home.speech": "Snakk",
 
     "foodDrink.title": "Mat og drikke",

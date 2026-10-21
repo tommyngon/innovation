@@ -23,10 +23,11 @@
 
 import { setLanguage, t, hasString } from "./strings.js";
 import * as backend from "./backend.js";
-import { CHANNEL_NAME, TYPE_ICONS, readStoredNotifications, updateStoredNotification } from "./notifications.js";
+import { CHANNEL_NAME, readStoredNotifications, updateStoredNotification } from "./notifications.js";
 import { unlockAudio, playDing } from "./sound.js";
 import { el } from "./ui.js";
 import { iconNode } from "../modules/pain/symptom-icons.js";
+import { typeIconNode } from "./icons.js";
 
 const POLL_MS = 10_000;
 const TICK_MS = 30_000;
@@ -487,7 +488,7 @@ function openCard(row, now) {
     ]),
     el("div", { class: "nurse-card-type-row" }, [
       el("span", { class: "nurse-card-type" }, [
-        el("span", { class: "icon", "aria-hidden": "true" }, [TYPE_ICONS[row.type] || "🔔"]),
+        el("span", { class: "icon", "aria-hidden": "true" }, [typeIconNode(row.type)]),
         typeLabel(row.type),
       ]),
       el("span", { class: "nurse-card-time" }, [`${clock(row.created_at)} · ${relative(age)}`]),
@@ -501,7 +502,7 @@ function openCard(row, now) {
 function ackCard(row) {
   return el("li", { class: "nurse-card nurse-card--ack", "data-id": row.id }, [
     el("span", { class: "nurse-ack-text" }, [
-      el("span", { class: "icon", "aria-hidden": "true" }, [TYPE_ICONS[row.type] || "🔔"]),
+      el("span", { class: "icon", "aria-hidden": "true" }, [typeIconNode(row.type)]),
       el("span", {}, [
         el("strong", {}, [`${t("nurse.room", { room: row.room })} · ${typeLabel(row.type)}`]),
         el("br"),
@@ -516,7 +517,7 @@ function ackCard(row) {
 
 function resolvedItem(row) {
   return el("li", { class: "nurse-resolved-item" }, [
-    el("span", { class: "icon", "aria-hidden": "true" }, [TYPE_ICONS[row.type] || "🔔"]),
+    el("span", { class: "icon", "aria-hidden": "true" }, [typeIconNode(row.type)]),
     el("span", {}, [
       `${t("nurse.room", { room: row.room })} · ${row.patient} · ${typeLabel(row.type)} · `
         + t("nurse.resolvedAt", { time: clock(row.resolved_at) }),
