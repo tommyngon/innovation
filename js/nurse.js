@@ -54,6 +54,8 @@ const arriving = new Set();     // ids to highlight on the next render
 const announced = new Set();    // ids we already played a ding for
 let initialLoadDone = false;
 let wasLive = false;
+let searchQuery = "";           // lower-cased text of the search box
+let shiftStartedAt = null;      // Date, set by startShift()
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -72,7 +74,23 @@ const els = {
   ackList: $("nurse-ack-list"),
   resolvedHeading: $("nurse-resolved-heading"),
   resolvedList: $("nurse-resolved-list"),
+  search: $("nurse-search"),
+  dutyTime: $("nurse-duty-time"),
 };
+
+/** Set the text of an element by id, if it exists. */
+function setText(id, text) {
+  const node = $(id);
+  if (node) node.textContent = text;
+}
+
+const NAV_KEYS = { overview: "nurse.navOverview", open: "nurse.navOpen", ack: "nurse.navAck", resolved: "nurse.navResolved" };
+const STATS = [
+  ["open", "nurse.statOpen", "nurse.statOpenNote"],
+  ["ack", "nurse.statAck", "nurse.statAckNote"],
+  ["resolved", "nurse.statResolved", "nurse.statResolvedNote"],
+  ["wait", "nurse.statWait", "nurse.statWaitNote"],
+];
 
 // ---------------------------------------------------------------- start
 
@@ -82,7 +100,18 @@ let soundIsOn = false;
 /** Texts that are set once (everything else is re-rendered by render()). */
 function applyStaticTexts() {
   document.title = t("nurse.pageTitle");
-  els.title.textContent = t("nurse.pageTitle");
+  if (els.title) els.title.textContent = t("nurse.pageTitle");
+  for (const [key, labelKey, noteKey] of STATS) {
+    setText(`nurse-stat-${key}-label`, t(labelKey));
+    setText(`nurse-stat-${key}-note`, t(noteKey));
+  }
+  for (const [key, labelKey] of Object.entries(NAV_KEYS)) setText(`nurse-nav-${key}-label`, t(labelKey));
+  setText("nurse-duty-name", t("nurse.dutyName"));
+  if (shiftStartedAt && els.dutyTime) els.dutyTime.textContent = t("nurse.dutyTime", { time: clock(shiftStartedAt.toISOString()) });
+  if (els.search) {
+    els.search.placeholder = t("nurse.searchPlaceholder");
+    els.search.setAttribute("aria-label", t("nurse.searchAria"));
+  }
   $("nurse-start-eyebrow").textContent = t("nurse.pageTitle");
   $("nurse-start-title").textContent = t("nurse.startTitle");
   $("nurse-start-hint").textContent = t("nurse.startHint");
@@ -113,6 +142,35 @@ document.querySelectorAll(".nurse-lang-button").forEach((b) => {
   b.addEventListener("click", () => switchLanguage(b.dataset.lang));
 });
 applyStaticTexts();
+
+els.search?.addEventListener("input", () => {
+  searchQuery = els.search.value.trim().toLocaleLowerCase(locale);
+  if (started) render();
+});
+
+/** Sidebar: smooth-scroll to the section and mark the item as the current one. */
+function setActiveNav(key) {
+  document.querySelectorAll(".nurse-nav-item").forEach((item) => {
+    const active = item.dataset.nav === key;
+    item.classList.toggle("is-active", active);
+    if (active) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
+  });
+}
+document.querySelectorAll(".nurse-nav-item").forEach((item) => {
+  item.addEventListener("click", (event) => {
+    event.preventDefault();
+    const key = item.dataset.nav;
+    setActiveNav(key);
+    const smooth = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const behavior = smooth ? "smooth" : "auto";
+    const target = key === "overview" ? null : $(`nurse-section-${key}`);
+    if (target) target.scrollIntoView({ behavior, block: "start" });
+    else window.scrollTo({ top: 0, behavior });
+  });
+});
+setActiveNav("overview");
+
 els.startButton.addEventListener("click", startShift, { once: true });
 
 async function startShift() {
@@ -122,7 +180,12 @@ async function startShift() {
 
   els.start.hidden = true;
   els.dashboard.hidden = false;
-  els.title.hidden = false;
+  if (els.title) els.title.hidden = false;
+  shiftStartedAt = new Date();
+  if (els.dutyTime) {
+    els.dutyTime.textContent = t("nurse.dutyTime", { time: clock(shiftStartedAt.toISOString()) });
+    els.dutyTime.hidden = false;
+  }
   els.sound.hidden = false;
   els.notify.hidden = false;
   document.body.classList.add("is-started");
@@ -332,17 +395,77 @@ function render() {
     .filter((r) => r.status === "resolved" && now - time(r.resolved_at) < RESOLVED_WINDOW_MS)
     .sort((a, b) => time(b.resolved_at) - time(a.resolved_at));
 
-  els.openHeading.textContent = `${t("nurse.openSection")} (${open.length})`;
-  els.ackHeading.textContent = `${t("nurse.ackSection")} (${acknowledged.length})`;
-  els.resolvedHeading.textContent = `${t("nurse.resolvedSection")} (${resolved.length})`;
+  renderOverview(open, acknowledged, resolved, now);
 
-  els.openList.replaceChildren(...(open.length ? open.map((r) => openCard(r, now)) : [empty("nurse.noOpen")]));
-  els.ackList.replaceChildren(...(acknowledged.length ? acknowledged.map(ackCard) : [empty("nurse.noAck")]));
-  els.resolvedList.replaceChildren(...(resolved.length ? resolved.map(resolvedItem) : [empty("nurse.noResolved")]));
+  // Search filters the lists only; counts in stats and navigation stay total.
+  const filtering = searchQuery !== "";
+  const shownOpen = filtering ? open.filter(matchesSearch) : open;
+  const shownAck = filtering ? acknowledged.filter(matchesSearch) : acknowledged;
+  const shownResolved = filtering ? resolved.filter(matchesSearch) : resolved;
+  const count = (shown, all) => (filtering ? `${shown.length}/${all.length}` : String(all.length));
+
+  els.openHeading.textContent = `${t("nurse.openSection")} (${count(shownOpen, open)})`;
+  els.ackHeading.textContent = `${t("nurse.ackSection")} (${count(shownAck, acknowledged)})`;
+  els.resolvedHeading.textContent = `${t("nurse.resolvedSection")} (${count(shownResolved, resolved)})`;
+
+  const emptyKey = (all, key) => (all.length ? "nurse.noMatches" : key);
+  els.openList.replaceChildren(...(shownOpen.length ? shownOpen.map((r) => openCard(r, now)) : [empty(emptyKey(open, "nurse.noOpen"))]));
+  els.ackList.replaceChildren(...(shownAck.length ? shownAck.map(ackCard) : [empty(emptyKey(acknowledged, "nurse.noAck"))]));
+  els.resolvedList.replaceChildren(...(shownResolved.length ? shownResolved.map(resolvedItem) : [empty(emptyKey(resolved, "nurse.noResolved"))]));
   arriving.clear();
 
   const title = t("nurse.pageTitle");
   document.title = open.length ? `(${open.length}) ${title}` : title;
+}
+
+/** Greeting, subtitle, stat cards and navigation badges (always the total counts). */
+function renderOverview(open, acknowledged, resolved, now) {
+  const hour = new Date(now).getHours();
+  setText("nurse-greeting", t(hour < 12 ? "nurse.greetingMorning" : hour < 18 ? "nurse.greetingAfternoon" : "nurse.greetingEvening"));
+  setText("nurse-subtitle", open.length === 0
+    ? t("nurse.subtitleNone")
+    : t(open.length === 1 ? "nurse.subtitleOne" : "nurse.subtitleMany", { n: open.length }));
+
+  const longest = open.length ? Math.max(...open.map((r) => now - time(r.created_at))) : null;
+  setText("nurse-stat-open", String(open.length));
+  setText("nurse-stat-ack", String(acknowledged.length));
+  setText("nurse-stat-resolved", String(resolved.length));
+  setText("nurse-stat-wait", longest === null ? "—" : t("nurse.minutesShort", { n: Math.max(0, Math.floor(longest / 60_000)) }));
+
+  setText("nurse-nav-open-count", String(open.length));
+  setText("nurse-nav-ack-count", String(acknowledged.length));
+  setText("nurse-nav-resolved-count", String(resolved.length));
+}
+
+/** Search box: room, patient, request type and details, case-insensitive. */
+function matchesSearch(row) {
+  const haystack = [row.room, row.patient, typeLabel(row.type), t("nurse.room", { room: row.room }), detailsText(row)]
+    .filter((part) => part !== undefined && part !== null)
+    .join(" ")
+    .toLocaleLowerCase(locale);
+  return haystack.includes(searchQuery);
+}
+
+/** Plain text of the request details, for searching. */
+function detailsText(row) {
+  const d = row.details && typeof row.details === "object" ? row.details : {};
+  switch (row.type) {
+    case "toilet":
+      return "";
+    case "drink":
+    case "food":
+      return foodDrinkText(row.type, d);
+    case "speech":
+      return [d.translatedText, d.originalText].filter(Boolean).join(" ");
+    case "pain": {
+      const spots = (Array.isArray(d.spots) ? d.spots : []).filter((s) => s && typeof s === "object").map(spotName);
+      return [summaryLine(row), ...spots, oldPainAreas(d), symptomList(d)].filter(Boolean).join(" ");
+    }
+    case "symptom":
+      return [symptomList(d), ...(Array.isArray(d.spots) ? d.spots : []).filter((s) => s && typeof s === "object").map(spotName)].join(" ");
+    default:
+      return JSON.stringify(d);
+  }
 }
 
 function openCard(row, now) {

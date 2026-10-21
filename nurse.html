@@ -25,18 +25,58 @@
 <body class="nurse-page">
   <div class="nurse-backdrop" aria-hidden="true"></div>
 
-  <header class="nurse-header">
-    <span class="nurse-header-title" id="nurse-title" hidden></span>
-    <div class="nurse-indicators">
-      <span class="nurse-connection" id="nurse-connection" role="status" hidden></span>
-      <span class="nurse-indicator" id="nurse-sound" hidden></span>
-      <span class="nurse-indicator" id="nurse-notify" hidden></span>
-      <div class="nurse-lang" role="group" aria-label="Language">
-        <button type="button" class="nurse-lang-button" data-lang="en" aria-label="English">EN</button>
-        <button type="button" class="nurse-lang-button" data-lang="no" aria-label="Norsk">NO</button>
+  <aside class="nurse-sidebar">
+    <div class="nurse-brand">
+      <span class="nurse-avatar nurse-avatar--brand" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M20.8 5.6a5.4 5.4 0 0 0-7.6 0L12 6.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 22l8.8-8.8a5.4 5.4 0 0 0 0-7.6z"/></svg>
+      </span>
+      <span class="nurse-brand-text" id="nurse-title"></span>
+    </div>
+
+    <nav class="nurse-nav" aria-labelledby="nurse-title">
+      <a class="nurse-nav-item is-active" href="#nurse-section-overview" data-nav="overview" aria-current="page">
+        <span class="nurse-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></span>
+        <span class="nurse-nav-label" id="nurse-nav-overview-label"></span>
+      </a>
+      <a class="nurse-nav-item" href="#nurse-section-open" data-nav="open">
+        <span class="nurse-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+        <span class="nurse-nav-label" id="nurse-nav-open-label"></span>
+        <span class="nurse-nav-count nurse-nav-count--alert" id="nurse-nav-open-count"></span>
+      </a>
+      <a class="nurse-nav-item" href="#nurse-section-ack" data-nav="ack">
+        <span class="nurse-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
+        <span class="nurse-nav-label" id="nurse-nav-ack-label"></span>
+        <span class="nurse-nav-count" id="nurse-nav-ack-count"></span>
+      </a>
+      <a class="nurse-nav-item" href="#nurse-section-resolved" data-nav="resolved">
+        <span class="nurse-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16 9.8"/></svg></span>
+        <span class="nurse-nav-label" id="nurse-nav-resolved-label"></span>
+        <span class="nurse-nav-count" id="nurse-nav-resolved-count"></span>
+      </a>
+    </nav>
+
+    <div class="nurse-side-foot">
+      <div class="nurse-duty">
+        <span class="nurse-avatar nurse-avatar--duty" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        </span>
+        <span class="nurse-duty-text">
+          <span class="nurse-duty-name" id="nurse-duty-name"></span>
+          <span class="nurse-duty-time" id="nurse-duty-time"></span>
+        </span>
+      </div>
+
+      <div class="nurse-side-tools nurse-indicators">
+        <span class="nurse-connection" id="nurse-connection" role="status" hidden></span>
+        <span class="nurse-indicator" id="nurse-sound" hidden></span>
+        <span class="nurse-indicator" id="nurse-notify" hidden></span>
+        <div class="nurse-lang" role="group" aria-label="Language">
+          <button type="button" class="nurse-lang-button" data-lang="en" aria-label="English">EN</button>
+          <button type="button" class="nurse-lang-button" data-lang="no" aria-label="Norsk">NO</button>
+        </div>
       </div>
     </div>
-  </header>
+  </aside>
 
   <main class="nurse">
     <section class="nurse-start" id="nurse-start">
@@ -51,20 +91,59 @@
     <div class="nurse-dashboard" id="nurse-dashboard" hidden>
       <p class="nurse-error" id="nurse-error" role="alert" hidden></p>
 
-      <section class="nurse-section nurse-section--open" aria-labelledby="nurse-open-heading">
+      <header class="nurse-hello" id="nurse-section-overview">
+        <h1 class="nurse-greeting" id="nurse-greeting"></h1>
+        <p class="nurse-subtitle" id="nurse-subtitle"></p>
+      </header>
+
+      <div class="nurse-search">
+        <svg class="nurse-search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" class="nurse-search-input" id="nurse-search" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="nurse-stats">
+        <div class="nurse-stat nurse-stat--blue">
+          <span class="nurse-stat-chip" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+          <p class="nurse-stat-label" id="nurse-stat-open-label"></p>
+          <p class="nurse-stat-value" id="nurse-stat-open"></p>
+          <p class="nurse-stat-note" id="nurse-stat-open-note"></p>
+        </div>
+        <div class="nurse-stat nurse-stat--pink">
+          <span class="nurse-stat-chip" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <p class="nurse-stat-label" id="nurse-stat-ack-label"></p>
+          <p class="nurse-stat-value" id="nurse-stat-ack"></p>
+          <p class="nurse-stat-note" id="nurse-stat-ack-note"></p>
+        </div>
+        <div class="nurse-stat nurse-stat--lavender">
+          <span class="nurse-stat-chip" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16 9.8"/></svg></span>
+          <p class="nurse-stat-label" id="nurse-stat-resolved-label"></p>
+          <p class="nurse-stat-value" id="nurse-stat-resolved"></p>
+          <p class="nurse-stat-note" id="nurse-stat-resolved-note"></p>
+        </div>
+        <div class="nurse-stat nurse-stat--mint">
+          <span class="nurse-stat-chip" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <p class="nurse-stat-label" id="nurse-stat-wait-label"></p>
+          <p class="nurse-stat-value" id="nurse-stat-wait"></p>
+          <p class="nurse-stat-note" id="nurse-stat-wait-note"></p>
+        </div>
+      </div>
+
+      <section class="nurse-section nurse-section--open" id="nurse-section-open" aria-labelledby="nurse-open-heading">
         <h2 class="nurse-section-title" id="nurse-open-heading"></h2>
         <ol class="nurse-list" id="nurse-open-list"></ol>
       </section>
 
-      <section class="nurse-section nurse-section--ack" aria-labelledby="nurse-ack-heading">
-        <h2 class="nurse-section-title" id="nurse-ack-heading"></h2>
-        <ol class="nurse-list" id="nurse-ack-list"></ol>
-      </section>
+      <div class="nurse-side-col">
+        <section class="nurse-section nurse-section--ack" id="nurse-section-ack" aria-labelledby="nurse-ack-heading">
+          <h2 class="nurse-section-title" id="nurse-ack-heading"></h2>
+          <ol class="nurse-list" id="nurse-ack-list"></ol>
+        </section>
 
-      <details class="nurse-section nurse-resolved">
-        <summary class="nurse-section-title" id="nurse-resolved-heading"></summary>
-        <ol class="nurse-list" id="nurse-resolved-list"></ol>
-      </details>
+        <details class="nurse-section nurse-resolved" id="nurse-section-resolved">
+          <summary class="nurse-section-title" id="nurse-resolved-heading"></summary>
+          <ol class="nurse-list" id="nurse-resolved-list"></ol>
+        </details>
+      </div>
     </div>
   </main>
   <noscript>This page needs JavaScript to work.</noscript>
