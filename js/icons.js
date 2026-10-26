@@ -59,13 +59,15 @@ const GLASS_BIG = cut(
 
 export const PATHS = {
   toilet: [
-    // tank with flush button cut-out
-    cut("M13 6 H23 A4 4 0 0 1 27 10 V23 A4 4 0 0 1 23 27 H13 A4 4 0 0 1 9 23 V10 A4 4 0 0 1 13 6 Z " +
-        "M16.5 12 A2.5 2.5 0 1 0 21.5 12 A2.5 2.5 0 1 0 16.5 12 Z"),
-    // seat
-    `<rect x="8" y="31" width="50" height="6.5" rx="3.25"/>`,
-    // bowl + pedestal
-    solid("M15 40.5 H51 C51 46.5 47.5 50.5 42 52 V58 H24 V52 C18.5 50.5 15 46.5 15 40.5 Z"),
+    // front view. Tank behind the seat: its bottom edge hugs the seat oval 3.5 units
+    // away; flush-button slot cut out
+    cut("M17 4H47A5 5 0 0 1 52 9V23.6Q52 26.08 49.5 25.13A29.5 13.5 0 0 0 14.5 25.13Q12 26.08 12 23.6V9A5 5 0 0 1 17 4Z" +
+        rr(25, 9, 14, 4.5, 2.25)),
+    // seat ring (oval seen slightly from above) with the bowl opening cut out
+    cut("M6 36A26 10 0 1 1 58 36A26 10 0 1 1 6 36Z" + "M15 34.5A17 5 0 1 1 49 34.5A17 5 0 1 1 15 34.5Z"),
+    // pedestal + floor foot
+    solid("M18 42H46L42 53H22Z"),
+    solid(rr(16, 52, 32, 6, 3)),
   ].join(""),
 
   food: CUTLERY_BIG,
@@ -101,15 +103,18 @@ export const PATHS = {
     solid("M46 38 C46 38 40.5 44 40.5 48 A5.5 5.5 0 0 0 51.5 48 C51.5 44 46 38 46 38 Z"),
   ].join(""),
 
-  speech: cut(
-    // bubble with tail
-    "M20 7 H44 A14 14 0 0 1 58 21 V33 A14 14 0 0 1 44 47 H34 L19.5 56.6 Q14.5 59.5 16 53 L20 47 " +
-      "A14 14 0 0 1 6 33 V21 A14 14 0 0 1 20 7 Z " +
-      // microphone capsule
-      "M26.5 18.5 A5.5 5.5 0 0 1 37.5 18.5 V22.5 A5.5 5.5 0 0 1 26.5 22.5 Z " +
-      // holder U + stem + base
-      "M19 23 A13 13 0 0 0 29.5 35.76 V38.5 H25 V43 H39 V38.5 H34.5 V35.76 A13 13 0 0 0 45 23 H41 A9 9 0 0 1 23 23 Z"
-  ),
+  speech: [
+    // two people talking: mirrored busts, each with a speech bubble whose tail points
+    // to its speaker. Left bubble solid, right bubble with "..." cut out.
+    solid(rr(5, 4, 24, 16, 7)),
+    solid(poly([[11, 18], [20, 18], [13, 26]], [1, 1, 1.5])),
+    cut(rr(35, 4, 24, 16, 7) + circ(40.1, 12, 1.8) + circ(47, 12, 1.8) + circ(53.9, 12, 1.8)),
+    solid(poly([[44, 18], [53, 18], [51, 26]], [1, 1, 1.5])),
+    solid(circ(17, 36, 7)),
+    solid("M5 58V56.5A10 10 0 0 1 15 46.5H19A10 10 0 0 1 29 56.5V58Z"),
+    solid(circ(47, 36, 7)),
+    solid("M35 58V56.5A10 10 0 0 1 45 46.5H49A10 10 0 0 1 59 56.5V58Z"),
+  ].join(""),
 
   bell: [
     solid("M32 13 C21 13 17 22 17 31 V38 L10 45 H54 L47 38 V31 C47 22 43 13 32 13 Z"),
