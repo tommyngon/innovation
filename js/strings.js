@@ -38,10 +38,6 @@ export const STRINGS = {
     "drink.milk": "Milk",
     "drink.tea": "Tea",
 
-    "toilet.pee": "Pee",
-    "toilet.poo": "Poo",
-    "toilet.help": "Need help",
-
     "food.alreadyRequested": "Food already requested",
     "food.requestedAt": "at {time}",
     // Only for OLDER food requests on the nurse dashboard (no longer a choice)
@@ -283,10 +279,6 @@ export const STRINGS = {
     "drink.milk": "Melk",
     "drink.tea": "Thee",
 
-    "toilet.pee": "Plassen",
-    "toilet.poo": "Poepen",
-    "toilet.help": "Hulp nodig",
-
     "food.alreadyRequested": "Eten al gevraagd",
     "food.requestedAt": "om {time}",
     // Only for OLDER food requests on the nurse dashboard (no longer a choice)
@@ -526,10 +518,6 @@ export const STRINGS = {
     "drink.water": "Vann",
     "drink.milk": "Melk",
     "drink.tea": "Te",
-
-    "toilet.pee": "Tisse",
-    "toilet.poo": "Bæsje",
-    "toilet.help": "Trenger hjelp",
 
     "food.alreadyRequested": "Mat er allerede bestilt",
     "food.requestedAt": "kl. {time}",

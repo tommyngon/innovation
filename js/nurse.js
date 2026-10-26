@@ -450,7 +450,6 @@ function matchesSearch(row) {
 /** Plain text of the request details, for searching. */
 /** Symbol of what the patient picked (same icons as the patient screen). */
 const CHOICE_ICONS = {
-  toilet: { pee: "pee", poo: "poo", help: "help" },
   drink: { water: "water", milk: "milk", tea: "tea" },
   food: { snacks: "snack", fruit: "fruit", yoghurt: "yoghurt", something: "more" },
 };
@@ -507,7 +506,7 @@ function openCard(row, now) {
       ]),
       el("span", { class: "nurse-card-time" }, [`${clock(row.created_at)} · ${relative(age)}`]),
     ]),
-    detailsElement(row),   // null for an old toilet request without a choice
+    detailsElement(row),   // null for a toilet request (no detail line)
     actions(row, ["acknowledged", "resolved"]),
   ].filter(Boolean));
   return card;
@@ -570,15 +569,13 @@ function bedsideUrl() {
   return (fromUrl || "http://localhost:8020").replace(/\/+$/, "");
 }
 
-/** Readable details of a request (a node, or null for an old "toilet" request). */
+/** Readable details of a request (a node, or null for a toilet request). */
 function detailsElement(row) {
   const d = row.details && typeof row.details === "object" ? row.details : {};
   const line = (text, className = "nurse-detail nurse-detail-main") => el("div", { class: className }, [text]);
   switch (row.type) {
     case "toilet":
-      return d.need
-        ? choiceLine(t("nurse.detailLine", { type: typeLabel("toilet"), value: label(`toilet.${d.need}`, d.need) }), CHOICE_ICONS.toilet[d.need])
-        : null;
+      return null;
     case "drink":
     case "food":
       return choiceLine(foodDrinkText(row.type, d), CHOICE_ICONS[row.type]?.[d.item]);

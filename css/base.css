@@ -385,7 +385,7 @@ button:disabled {
 .tile[data-accent="speech"] { --tile-accent: var(--accent-speech); }
 
 /* ---- Playful tiles: grids made with createTileGrid(layout, { playful: true }) (home, toilet, food & drink); other grids keep the square tiles above ---- */
-/* One big soft rounded tile: label top-left, large icon beneath it */
+/* One big soft rounded tile: label top-left, large icon centred in the space beneath it */
 .tile-grid--playful .tile {
   width: var(--tile);
   height: var(--tile);
@@ -405,8 +405,12 @@ button:disabled {
   transition: transform 0.08s ease;
 }
 .tile-grid--playful .tile-icon {
-  flex: 0 0 auto;
-  display: block;
+  flex: 1 1 auto;                                       /* fills the space below the label */
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;                                  /* icon centred in that space */
+  justify-content: center;
   font-size: calc(var(--tile) * 0.3);                   /* emoji fallback */
   --tile-icon-size: min(clamp(96px, 22vmin, 220px), calc(var(--tile) * 0.52));
 }
