@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+httpx
+python-dotenv
+python-multipart
+numpy
+torch
+transformers
+accelerate

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Lab</title>
+<link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+<header>
+  <h1>AI Lab</h1>
+  <div id="status"><span class="pill" id="s-key">key: ?</span><span class="pill" id="s-idun">IDUN: ?</span><span class="pill" id="s-dev">device: ?</span></div>
+</header>
+<nav>
+  <button class="tab active" data-tab="chat">Chat</button>
+  <button class="tab" data-tab="stt">Transkribering</button>
+</nav>
+
+<main>
+<section id="chat" class="panel active">
+  <div class="row">
+    <label>Model <select id="model"></select></label>
+    <label>Temperature <input id="temp" type="number" min="0" max="2" step="0.1" value="0.7"></label>
+    <button id="clear">Clear</button>
+  </div>
+  <label class="block">System prompt <textarea id="system" rows="2">You are a helpful assistant. Answer in the user's language.</textarea></label>
+  <div id="log"></div>
+  <div class="row send">
+    <textarea id="input" rows="3" placeholder="Skriv melding… (Cmd/Ctrl+Enter sender)"></textarea>
+    <button id="send" class="primary">Send</button>
+  </div>
+</section>
+
+<section id="stt" class="panel">
+  <div class="row">
+    <label>Whisper model
+      <select id="wmodel">
+        <option value="NbAiLab/nb-whisper-tiny">tiny</option>
+        <option value="NbAiLab/nb-whisper-base">base</option>
+        <option value="NbAiLab/nb-whisper-small" selected>small</option>
+        <option value="NbAiLab/nb-whisper-medium">medium</option>
+        <option value="NbAiLab/nb-whisper-large">large</option>
+        <option value="NbAiLab/nb-whisper-tiny-verbatim">tiny-verbatim</option>
+        <option value="NbAiLab/nb-whisper-base-verbatim">base-verbatim</option>
+        <option value="NbAiLab/nb-whisper-small-verbatim">small-verbatim</option>
+        <option value="NbAiLab/nb-whisper-medium-verbatim">medium-verbatim</option>
+        <option value="NbAiLab/nb-whisper-large-verbatim">large-verbatim</option>
+      </select></label>
+    <label>Language
+      <select id="lang"><option value="no">Bokmål (no)</option><option value="nn">Nynorsk (nn)</option><option value="en">English (en)</option></select></label>
+    <label>Task
+      <select id="task"><option value="transcribe">Transcribe</option><option value="translate">Translate → English</option></select></label>
+    <label>Beams <input id="beams" type="number" min="1" max="8" value="1"></label>
+    <label class="chk"><input id="ts" type="checkbox" checked> Timestamps</label>
+  </div>
+  <div class="row">
+    <input id="file" type="file" accept="audio/*,video/*">
+    <button id="rec">● Record</button>
+    <span id="recinfo" class="muted"></span>
+  </div>
+  <audio id="player" controls hidden></audio>
+  <div class="row"><button id="go" class="primary" disabled>Transcribe</button><span id="busy" class="muted"></span></div>
+  <h3>Transcript</h3>
+  <textarea id="out" rows="8" placeholder="Transcript…"></textarea>
+  <div id="meta" class="muted"></div>
+  <div id="segs"></div>
+  <div class="row">
+    <label>LLM <select id="tmodel"></select></label>
+    <button id="tr-en">Translate (LLM) no→en</button>
+    <button id="tr-no">en→no</button>
+    <button id="tochat">Send to chat</button>
+  </div>
+  <h3>Translation</h3>
+  <textarea id="trout" rows="5"></textarea>
+</section>
+</main>
+<script src="app.js?v=2"></script>
+</body>
+</html>
